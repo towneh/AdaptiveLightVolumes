@@ -3,20 +3,24 @@
 
 // Adaptive Light Volumes - shader-side evaluator.
 //
-// V1 ships only the Point-light path. Spot and Area are scaffolded in the data
-// model and pushed as globals by BakedLightOcclusionManager, but the evaluator
-// branches below are intentionally TODO until those types are implemented.
+// Three light types are evaluated below: Point (omnidirectional), Spot (cone
+// with optional projected cookie), and Area (rectangular Lambert via LTC
+// polygon integration). All three sample a per-light baked occlusion Texture3D
+// and apply a parametric distance falloff.
 //
 // Designed to be referenced from a Shader Graph Custom Function Node:
 //   - Source: this file
 //   - Name:   EvaluateAdaptiveLights_float
 //   - Inputs: float3 PositionWS, float3 NormalWS
 //   - Output: float3 LightContribution
+//
+// Or included directly from a hand-written URP shader (see ALV_DemoUnlit.shader
+// in this folder for a minimal example).
 
 #define ALV_MAX_LIGHTS 8
 
 float    _ALV_LightCount;
-float4   _ALV_LightTypes[ALV_MAX_LIGHTS];        // x = type (0=point, 1=spot, 2=area)
+float4   _ALV_LightTypes[ALV_MAX_LIGHTS];        // x = type (0=point, 1=spot, 2=area), y = twoSided (0/1, area only)
 float4   _ALV_LightPositions[ALV_MAX_LIGHTS];    // xyz = world position
 float4   _ALV_LightDirections[ALV_MAX_LIGHTS];   // xyz = world forward
 float4   _ALV_LightColors[ALV_MAX_LIGHTS];       // rgb = color * intensity, a = falloff exponent

@@ -26,7 +26,7 @@ namespace AdaptiveLightVolumes {
         [Header("Spot (Type = Spot)")]
         [Range(1f, 179f)] public float SpotOuterAngle = 60f;
         [Range(0f, 179f)] public float SpotInnerAngle = 45f;
-        [Tooltip("Optional projected cookie texture. Sampled by the consumer shader; not yet wired through the manager in V0.")]
+        [Tooltip("Optional projected cookie texture. Mapped onto the cone footprint; pixels outside the cone are clamped to the texture border. Set Wrap Mode = Clamp on the texture for clean edges.")]
         public Texture2D Cookie;
 
         [Header("Area (Type = Area)")]
