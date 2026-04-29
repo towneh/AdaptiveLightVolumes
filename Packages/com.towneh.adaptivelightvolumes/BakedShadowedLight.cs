@@ -42,6 +42,12 @@ namespace AdaptiveLightVolumes {
         [Tooltip("Layers considered as occluders during the bake. Typically the static-environment layer; defaults to all.")]
         public LayerMask OccluderLayers = -1;
 
+        [Tooltip("Number of jittered samples per voxel used to soften shadow edges. 1 = hard binary shadows.")]
+        [Range(1, 64)] public int ShadowSamples = 16;
+
+        [Tooltip("Physical radius of the light source for shadow softening. Larger values produce softer penumbras. 0 = hard shadows regardless of sample count.")]
+        [Min(0f)] public float ShadowRadius = 0.1f;
+
         [Tooltip("Texture3D produced by OcclusionVolumeBaker. Assigned at bake time; sampled at runtime by the shader.")]
         public Texture3D BakedOcclusion;
 
