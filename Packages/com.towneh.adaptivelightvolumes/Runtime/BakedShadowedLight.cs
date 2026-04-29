@@ -8,6 +8,7 @@ namespace AdaptiveLightVolumes {
         Area
     }
 
+    [ExecuteAlways]
     [DisallowMultipleComponent]
     [AddComponentMenu("Lighting/Adaptive Light Volumes/Baked Shadowed Light")]
     public class BakedShadowedLight : MonoBehaviour {
