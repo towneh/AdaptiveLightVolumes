@@ -11,9 +11,6 @@ A baker traces rays from a 3D voxel grid around each light against your static s
 - **Three light types**: omnidirectional Point, cone Spot with optional projected cookie texture, and rectangular Area integrated via Linearly Transformed Cosines.
 - **Per-light baked occlusion volume** — soft shadows from static scenery without realtime shadow maps. Soft penumbras via jittered multi-sample baking (configurable `ShadowSamples` × `ShadowRadius`).
 - **CPU and hardware ray-tracing bakers**. The HW path uses inline RT in a compute shader against a `RayTracingAccelerationStructure` and bakes a 32³×16-sample volume in milliseconds; the CPU path uses `RaycastCommand` and is the safe default everywhere.
-- **TwoSided** toggle on area lights for free double-sided emissive panels.
-- **Cancellable progress** at every entry point: scene-wide bake menu, per-light Bake button in the inspector, right-click context menu.
-- **Diagnostic inspector on the manager** showing every registered light's bind status, with a max-cap warning and a force-push button for shader debugging.
 
 ## Requirements
 
