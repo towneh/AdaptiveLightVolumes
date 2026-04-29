@@ -23,8 +23,10 @@ namespace AdaptiveLightVolumes {
         private static readonly int s_AreaParamsID    = Shader.PropertyToID("_ALV_LightAreaParams");
         private static readonly int s_BoundsMinID     = Shader.PropertyToID("_ALV_OcclusionBoundsMin");
         private static readonly int s_BoundsMaxID     = Shader.PropertyToID("_ALV_OcclusionBoundsMax");
+        private static readonly int s_WorldToLightID  = Shader.PropertyToID("_ALV_WorldToLight");
 
-        private static readonly int[] s_OcclusionTexIDs = BuildOcclusionTexIDs();
+        private static readonly int[] s_OcclusionTexIDs = BuildTexIDs("_ALV_OcclusionTex");
+        private static readonly int[] s_CookieTexIDs    = BuildTexIDs("_ALV_CookieTex");
 
         private static readonly Vector4[] s_Types       = new Vector4[MaxLights];
         private static readonly Vector4[] s_Positions   = new Vector4[MaxLights];
@@ -35,10 +37,11 @@ namespace AdaptiveLightVolumes {
         private static readonly Vector4[] s_AreaParams  = new Vector4[MaxLights];
         private static readonly Vector4[] s_BoundsMin   = new Vector4[MaxLights];
         private static readonly Vector4[] s_BoundsMax   = new Vector4[MaxLights];
+        private static readonly Matrix4x4[] s_WorldToLight = new Matrix4x4[MaxLights];
 
-        private static int[] BuildOcclusionTexIDs() {
+        private static int[] BuildTexIDs(string prefix) {
             var ids = new int[MaxLights];
-            for (int i = 0; i < MaxLights; i++) ids[i] = Shader.PropertyToID($"_ALV_OcclusionTex{i}");
+            for (int i = 0; i < MaxLights; i++) ids[i] = Shader.PropertyToID($"{prefix}{i}");
             return ids;
         }
 
@@ -96,7 +99,10 @@ namespace AdaptiveLightVolumes {
                 s_BoundsMin[count] = b.min;
                 s_BoundsMax[count] = b.max;
 
+                s_WorldToLight[count] = l.transform.worldToLocalMatrix;
+
                 Shader.SetGlobalTexture(s_OcclusionTexIDs[count], l.BakedOcclusion != null ? (Texture)l.BakedOcclusion : Texture2D.whiteTexture);
+                Shader.SetGlobalTexture(s_CookieTexIDs[count], l.Cookie != null ? (Texture)l.Cookie : Texture2D.whiteTexture);
 
                 count++;
             }
@@ -111,6 +117,7 @@ namespace AdaptiveLightVolumes {
             Shader.SetGlobalVectorArray(s_AreaParamsID, s_AreaParams);
             Shader.SetGlobalVectorArray(s_BoundsMinID, s_BoundsMin);
             Shader.SetGlobalVectorArray(s_BoundsMaxID, s_BoundsMax);
+            Shader.SetGlobalMatrixArray(s_WorldToLightID, s_WorldToLight);
         }
     }
 }

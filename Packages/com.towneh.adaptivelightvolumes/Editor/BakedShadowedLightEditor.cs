@@ -65,11 +65,6 @@ namespace AdaptiveLightVolumes.Editor {
                 EditorGUILayout.PropertyField(_spotOuterAngle);
                 EditorGUILayout.PropertyField(_spotInnerAngle);
                 EditorGUILayout.PropertyField(_cookie);
-                if (_cookie.objectReferenceValue != null) {
-                    EditorGUILayout.HelpBox(
-                        "Cookie is set but the spot evaluator does not currently sample it. Cookie binding is a follow-up.",
-                        MessageType.Info);
-                }
             }
 
             if (mixedType || displayedType == LightType.Area) {

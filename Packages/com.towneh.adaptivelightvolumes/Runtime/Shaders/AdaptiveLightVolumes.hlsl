@@ -25,6 +25,7 @@ float4   _ALV_LightSpotParams[ALV_MAX_LIGHTS];   // x = cos(outer/2), y = cos(in
 float4   _ALV_LightAreaParams[ALV_MAX_LIGHTS];   // x = halfWidth, y = halfHeight
 float4   _ALV_OcclusionBoundsMin[ALV_MAX_LIGHTS];
 float4   _ALV_OcclusionBoundsMax[ALV_MAX_LIGHTS];
+float4x4 _ALV_WorldToLight[ALV_MAX_LIGHTS];
 
 Texture3D    _ALV_OcclusionTex0; SamplerState sampler_ALV_OcclusionTex0;
 Texture3D    _ALV_OcclusionTex1; SamplerState sampler_ALV_OcclusionTex1;
@@ -34,6 +35,26 @@ Texture3D    _ALV_OcclusionTex4; SamplerState sampler_ALV_OcclusionTex4;
 Texture3D    _ALV_OcclusionTex5; SamplerState sampler_ALV_OcclusionTex5;
 Texture3D    _ALV_OcclusionTex6; SamplerState sampler_ALV_OcclusionTex6;
 Texture3D    _ALV_OcclusionTex7; SamplerState sampler_ALV_OcclusionTex7;
+
+Texture2D    _ALV_CookieTex0; SamplerState sampler_ALV_CookieTex0;
+Texture2D    _ALV_CookieTex1; SamplerState sampler_ALV_CookieTex1;
+Texture2D    _ALV_CookieTex2; SamplerState sampler_ALV_CookieTex2;
+Texture2D    _ALV_CookieTex3; SamplerState sampler_ALV_CookieTex3;
+Texture2D    _ALV_CookieTex4; SamplerState sampler_ALV_CookieTex4;
+Texture2D    _ALV_CookieTex5; SamplerState sampler_ALV_CookieTex5;
+Texture2D    _ALV_CookieTex6; SamplerState sampler_ALV_CookieTex6;
+Texture2D    _ALV_CookieTex7; SamplerState sampler_ALV_CookieTex7;
+
+float3 _ALV_SampleCookie(int lightIdx, float2 uv) {
+    if (lightIdx == 0) return _ALV_CookieTex0.SampleLevel(sampler_ALV_CookieTex0, uv, 0).rgb;
+    if (lightIdx == 1) return _ALV_CookieTex1.SampleLevel(sampler_ALV_CookieTex1, uv, 0).rgb;
+    if (lightIdx == 2) return _ALV_CookieTex2.SampleLevel(sampler_ALV_CookieTex2, uv, 0).rgb;
+    if (lightIdx == 3) return _ALV_CookieTex3.SampleLevel(sampler_ALV_CookieTex3, uv, 0).rgb;
+    if (lightIdx == 4) return _ALV_CookieTex4.SampleLevel(sampler_ALV_CookieTex4, uv, 0).rgb;
+    if (lightIdx == 5) return _ALV_CookieTex5.SampleLevel(sampler_ALV_CookieTex5, uv, 0).rgb;
+    if (lightIdx == 6) return _ALV_CookieTex6.SampleLevel(sampler_ALV_CookieTex6, uv, 0).rgb;
+    return _ALV_CookieTex7.SampleLevel(sampler_ALV_CookieTex7, uv, 0).rgb;
+}
 
 float _ALV_SampleOcclusion(int lightIdx, float3 positionWS) {
     float3 minB = _ALV_OcclusionBoundsMin[lightIdx].xyz;
@@ -106,7 +127,18 @@ float3 _ALV_EvaluateSpotLight(int i, float3 positionWS, float3 normalWS) {
 
     float  occlusion   = _ALV_SampleOcclusion(i, positionWS);
 
-    return _ALV_LightColors[i].rgb * (NoL * falloff * cone * occlusion);
+    // Cookie projection: transform world pos into the light's local space and
+    // project onto a plane at z=1, mapping the outer cone footprint to UV [0,1].
+    // Manager binds Texture2D.whiteTexture when no cookie is set, so this is a
+    // no-op multiply unless the user has assigned one.
+    float3 localPos    = mul(_ALV_WorldToLight[i], float4(positionWS, 1.0)).xyz;
+    float  invCosOuter = 1.0 / max(cosOuter, 1e-5);
+    float  tanOuter    = sqrt(saturate(1.0 - cosOuter * cosOuter)) * invCosOuter;
+    float2 projXY      = localPos.xy / max(localPos.z, 1e-4);
+    float2 cookieUV    = saturate(projXY * (0.5 / max(tanOuter, 1e-5)) + 0.5);
+    float3 cookie      = _ALV_SampleCookie(i, cookieUV);
+
+    return _ALV_LightColors[i].rgb * cookie * (NoL * falloff * cone * occlusion);
 }
 
 void EvaluateAdaptiveLights_float(float3 PositionWS, float3 NormalWS, out float3 LightContribution) {
