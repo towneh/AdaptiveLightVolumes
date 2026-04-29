@@ -76,6 +76,39 @@ float3 _ALV_EvaluatePointLight(int i, float3 positionWS, float3 normalWS) {
     return _ALV_LightColors[i].rgb * (NoL * falloff * occlusion);
 }
 
+float3 _ALV_EvaluateSpotLight(int i, float3 positionWS, float3 normalWS) {
+    float3 lp       = _ALV_LightPositions[i].xyz;
+    float3 toLight  = lp - positionWS;
+    float  dist     = length(toLight);
+    float  range    = _ALV_LightRanges[i].x;
+    if (dist > range || dist <= 0.0) return 0.0;
+
+    float3 L        = toLight / dist;
+    float  NoL      = saturate(dot(normalWS, L));
+    if (NoL <= 0.0) return 0.0;
+
+    // Cone falloff: smoothstep between cosInner (full intensity) and cosOuter (0).
+    // cosTheta is the angle between the light's forward and the direction from light
+    // to the surface point; receivers in front of the spot have cosTheta > 0.
+    float3 lightFwd = _ALV_LightDirections[i].xyz;
+    float  cosTheta = dot(lightFwd, -L);
+    float  cosOuter = _ALV_LightSpotParams[i].x;
+    float  cosInner = _ALV_LightSpotParams[i].y;
+    if (cosTheta < cosOuter) return 0.0;
+
+    float  invCosRange = 1.0 / max(cosInner - cosOuter, 1e-5);
+    float  cone        = saturate((cosTheta - cosOuter) * invCosRange);
+    cone               = cone * cone;
+
+    float  distNorm    = saturate(dist * _ALV_LightRanges[i].y);
+    float  falloffExp  = _ALV_LightColors[i].a;
+    float  falloff     = pow(1.0 - distNorm, falloffExp);
+
+    float  occlusion   = _ALV_SampleOcclusion(i, positionWS);
+
+    return _ALV_LightColors[i].rgb * (NoL * falloff * cone * occlusion);
+}
+
 void EvaluateAdaptiveLights_float(float3 PositionWS, float3 NormalWS, out float3 LightContribution) {
     float3 total = 0.0;
     int count = (int)_ALV_LightCount;
@@ -83,8 +116,9 @@ void EvaluateAdaptiveLights_float(float3 PositionWS, float3 NormalWS, out float3
         float type = _ALV_LightTypes[i].x;
         if (type < 0.5) {
             total += _ALV_EvaluatePointLight(i, PositionWS, NormalWS);
+        } else if (type < 1.5) {
+            total += _ALV_EvaluateSpotLight(i, PositionWS, NormalWS);
         }
-        // TODO: type < 1.5 -> Spot evaluator (cone term + optional cookie sample)
         // TODO: type < 2.5 -> Area evaluator (rectangular Lambert / LTC integration)
     }
     LightContribution = total;

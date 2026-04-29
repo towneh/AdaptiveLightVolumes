@@ -67,7 +67,7 @@ namespace AdaptiveLightVolumes.Editor {
                 EditorGUILayout.PropertyField(_cookie);
                 if (_cookie.objectReferenceValue != null) {
                     EditorGUILayout.HelpBox(
-                        "Cookie is exposed for authoring but not yet bound to the shader by the manager. The Spot evaluator and cookie sampling are V1+ work.",
+                        "Cookie is set but the spot evaluator does not currently sample it. Cookie binding is a follow-up.",
                         MessageType.Info);
                 }
             }
