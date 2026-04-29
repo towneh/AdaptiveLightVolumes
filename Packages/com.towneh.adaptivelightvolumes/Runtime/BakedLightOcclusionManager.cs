@@ -68,7 +68,7 @@ namespace AdaptiveLightVolumes {
             PushGlobals();
         }
 
-        private static void PushGlobals() {
+        public static void PushGlobals() {
             int count = 0;
             for (int i = 0; i < s_Lights.Count && count < MaxLights; i++) {
                 var l = s_Lights[i];
