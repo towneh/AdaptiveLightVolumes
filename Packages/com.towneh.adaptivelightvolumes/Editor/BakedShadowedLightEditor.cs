@@ -24,6 +24,7 @@ namespace AdaptiveLightVolumes.Editor {
         private SerializedProperty _occluderLayers;
         private SerializedProperty _shadowSamples;
         private SerializedProperty _shadowRadius;
+        private SerializedProperty _useHardwareRT;
         private SerializedProperty _bakedOcclusion;
 
         private void OnEnable() {
@@ -44,6 +45,7 @@ namespace AdaptiveLightVolumes.Editor {
             _occluderLayers  = serializedObject.FindProperty(nameof(BakedShadowedLight.OccluderLayers));
             _shadowSamples   = serializedObject.FindProperty(nameof(BakedShadowedLight.ShadowSamples));
             _shadowRadius    = serializedObject.FindProperty(nameof(BakedShadowedLight.ShadowRadius));
+            _useHardwareRT   = serializedObject.FindProperty(nameof(BakedShadowedLight.UseHardwareRT));
             _bakedOcclusion  = serializedObject.FindProperty(nameof(BakedShadowedLight.BakedOcclusion));
         }
 
@@ -81,6 +83,12 @@ namespace AdaptiveLightVolumes.Editor {
             EditorGUILayout.PropertyField(_occluderLayers);
             EditorGUILayout.PropertyField(_shadowSamples);
             EditorGUILayout.PropertyField(_shadowRadius);
+            EditorGUILayout.PropertyField(_useHardwareRT);
+            if (_useHardwareRT.boolValue && !HardwareRTOcclusionBaker.IsSupported) {
+                EditorGUILayout.HelpBox(
+                    "Hardware ray tracing is not available in this editor session. Bake will fall back to CPU. Set Graphics API to D3D12 (or Vulkan with RT extensions) and ensure the GPU supports DXR / VK_KHR_ray_tracing.",
+                    MessageType.Info);
+            }
 
             DrawSectionHeader("Result");
             using (new EditorGUI.DisabledScope(true)) {

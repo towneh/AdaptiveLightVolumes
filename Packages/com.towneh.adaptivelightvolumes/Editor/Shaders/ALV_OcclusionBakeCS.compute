@@ -1,0 +1,43 @@
+#pragma kernel BakeOcclusion
+#pragma require inlineraytracing
+#pragma use_dxc
+
+RaytracingAccelerationStructure _ALV_RTAS;
+RWTexture3D<float>              _ALV_BakeOutput;
+StructuredBuffer<float4>        _ALV_SampleOffsets;
+
+float3 _ALV_BakeOrigin;
+float3 _ALV_BakeCellSize;
+uint3  _ALV_BakeRes;
+float3 _ALV_LightPos;
+uint   _ALV_SampleCount;
+float  _ALV_RayMaxDistanceEps;
+
+[numthreads(4, 4, 4)]
+void BakeOcclusion(uint3 id : SV_DispatchThreadID) {
+    if (any(id >= _ALV_BakeRes)) return;
+
+    float3 voxelPos = _ALV_BakeOrigin + (float3)id * _ALV_BakeCellSize;
+
+    uint visible = 0;
+    for (uint s = 0; s < _ALV_SampleCount; s++) {
+        float3 target  = _ALV_LightPos + _ALV_SampleOffsets[s].xyz;
+        float3 toLight = target - voxelPos;
+        float  dist    = length(toLight);
+        if (dist <= 0.0) { visible++; continue; }
+
+        RayDesc ray;
+        ray.Origin    = voxelPos;
+        ray.Direction = toLight / dist;
+        ray.TMin      = 0.0;
+        ray.TMax      = max(0.0, dist - _ALV_RayMaxDistanceEps);
+
+        RayQuery<RAY_FLAG_NONE> q;
+        q.TraceRayInline(_ALV_RTAS, RAY_FLAG_NONE, 0xFF, ray);
+        q.Proceed();
+
+        if (q.CommittedStatus() == COMMITTED_NOTHING) visible++;
+    }
+
+    _ALV_BakeOutput[id] = (float)visible / (float)_ALV_SampleCount;
+}

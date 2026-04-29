@@ -49,6 +49,9 @@ namespace AdaptiveLightVolumes {
         [Tooltip("Physical radius of the light source for shadow softening. Larger values produce softer penumbras. 0 = hard shadows regardless of sample count.")]
         [Min(0f)] public float ShadowRadius = 0.1f;
 
+        [Tooltip("Use hardware ray tracing to bake occlusion against scene MeshRenderers when supported. Falls back to CPU RaycastCommand against Colliders if not available.")]
+        public bool UseHardwareRT = true;
+
         [Tooltip("Texture3D produced by OcclusionVolumeBaker. Assigned at bake time; sampled at runtime by the shader.")]
         public Texture3D BakedOcclusion;
 

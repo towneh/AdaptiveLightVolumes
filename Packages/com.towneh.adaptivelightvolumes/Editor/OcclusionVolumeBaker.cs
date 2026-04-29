@@ -34,12 +34,25 @@ namespace AdaptiveLightVolumes.Editor {
         }
 
         /// <summary>
-        /// Bake an occlusion Texture3D for the given light.
+        /// Bake an occlusion Texture3D for the given light. Dispatches to the
+        /// hardware RT baker first when requested and supported, falling back
+        /// to CPU RaycastCommand otherwise.
         /// Returns true if completed, false if canceled by the progress callback.
         /// </summary>
         public static bool Bake(BakedShadowedLight light, ProgressCallback progress = null) {
             if (light == null) return false;
 
+            if (light.UseHardwareRT) {
+                if (HardwareRTOcclusionBaker.TryBake(light, out string failureReason)) {
+                    return true;
+                }
+                Debug.LogWarning($"[ALV] HW RT bake unavailable for '{light.name}', falling back to CPU. Reason: {failureReason}", light);
+            }
+
+            return BakeCpu(light, progress);
+        }
+
+        private static bool BakeCpu(BakedShadowedLight light, ProgressCallback progress) {
             var res = light.BakeResolution;
             if (res.x <= 0 || res.y <= 0 || res.z <= 0) {
                 Debug.LogError($"[ALV] Invalid bake resolution {res} on '{light.name}'.", light);
@@ -136,7 +149,7 @@ namespace AdaptiveLightVolumes.Editor {
             }
         }
 
-        private static Vector3[] GenerateSampleOffsets(int count, float radius, int seed) {
+        internal static Vector3[] GenerateSampleOffsets(int count, float radius, int seed) {
             var result = new Vector3[count];
             if (count == 1 || radius <= 0f) {
                 for (int i = 0; i < count; i++) result[i] = Vector3.zero;
@@ -156,7 +169,7 @@ namespace AdaptiveLightVolumes.Editor {
             return result;
         }
 
-        private static void SaveAndAssign(BakedShadowedLight light, Texture3D tex) {
+        internal static void SaveAndAssign(BakedShadowedLight light, Texture3D tex) {
             if (!AssetDatabase.IsValidFolder(GeneratedFolder)) {
                 AssetDatabase.CreateFolder("Assets", System.IO.Path.GetFileName(GeneratedFolder));
             }
