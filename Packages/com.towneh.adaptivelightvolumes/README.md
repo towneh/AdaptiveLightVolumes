@@ -100,9 +100,9 @@ A note on layer semantics: the CPU path filters Colliders by `OccluderLayers`; t
 
 ## Credits
 
-- The polygon clip table and rational `θ/sin(θ)` approximation follow the production-tested implementation in [pi-mak's LTCGI shader](https://github.com/PiMaker/ltcgi) (case ordering, `[forcecase]` performance note, `abs(sum)` integration sign).
-- Linearly Transformed Cosines for area-light integration: Heitz, Dupuy, Hill, Iwasaki, *"Real-Time Polygonal-Light Shading with Linearly Transformed Cosines"*, ACM SIGGRAPH 2016.
 - Inspired by the static-light-volume design of [VRC Light Volumes](https://github.com/REDSIM/VRCLightVolumes).
+- Linearly Transformed Cosines for area-light integration: Heitz, Dupuy, Hill, Iwasaki, *"Real-Time Polygonal-Light Shading with Linearly Transformed Cosines"*, ACM SIGGRAPH 2016.
+- The polygon clip table and rational `θ/sin(θ)` approximation follow the production-tested implementation in [Pi's LTCGI shader](https://github.com/PiMaker/ltcgi) (case ordering, `[forcecase]` performance note, `abs(sum)` integration sign).
 
 ## License
 
