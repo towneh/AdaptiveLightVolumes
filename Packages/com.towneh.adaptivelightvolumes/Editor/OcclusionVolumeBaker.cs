@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
@@ -12,18 +13,37 @@ namespace AdaptiveLightVolumes.Editor {
         // doesn't self-hit a collider co-located with the light source.
         private const float RayEndEpsilon = 0.01f;
 
+        // Rays-per-chunk for cancellable progress dispatch.
+        // 16k keeps each ScheduleBatch.Complete() fast enough for snappy cancel.
+        private const int RaysPerChunk = 16384;
+
+        // Progress callback signature: (progress01, statusMessage) -> shouldCancel
+        public delegate bool ProgressCallback(float progress01, string status);
+
         [MenuItem("CONTEXT/BakedShadowedLight/Bake Occlusion Volume")]
         private static void BakeFromMenu(MenuCommand cmd) {
-            Bake((BakedShadowedLight)cmd.context);
+            try {
+                Bake((BakedShadowedLight)cmd.context, DefaultProgress);
+            } finally {
+                EditorUtility.ClearProgressBar();
+            }
         }
 
-        public static void Bake(BakedShadowedLight light) {
-            if (light == null) return;
+        private static bool DefaultProgress(float progress, string status) {
+            return EditorUtility.DisplayCancelableProgressBar("Baking Adaptive Light Volume", status, progress);
+        }
+
+        /// <summary>
+        /// Bake an occlusion Texture3D for the given light.
+        /// Returns true if completed, false if canceled by the progress callback.
+        /// </summary>
+        public static bool Bake(BakedShadowedLight light, ProgressCallback progress = null) {
+            if (light == null) return false;
 
             var res = light.BakeResolution;
             if (res.x <= 0 || res.y <= 0 || res.z <= 0) {
                 Debug.LogError($"[ALV] Invalid bake resolution {res} on '{light.name}'.", light);
-                return;
+                return false;
             }
 
             int voxelCount = res.x * res.y * res.z;
@@ -71,8 +91,18 @@ namespace AdaptiveLightVolumes.Editor {
                     }
                 }
 
-                var handle = RaycastCommand.ScheduleBatch(commands, hits, 256, 1);
-                handle.Complete();
+                for (int rayStart = 0; rayStart < totalRays; rayStart += RaysPerChunk) {
+                    int count = Mathf.Min(RaysPerChunk, totalRays - rayStart);
+                    var cmdSlice = commands.GetSubArray(rayStart, count);
+                    var hitSlice = hits.GetSubArray(rayStart, count);
+                    RaycastCommand.ScheduleBatch(cmdSlice, hitSlice, 256, 1).Complete();
+
+                    if (progress != null) {
+                        float p = (float)(rayStart + count) / totalRays;
+                        bool canceled = progress(p, $"'{light.name}' — {rayStart + count}/{totalRays} rays");
+                        if (canceled) return false;
+                    }
+                }
 
                 var data = new Color32[voxelCount];
                 int totalOccludedSamples = 0;
@@ -99,6 +129,7 @@ namespace AdaptiveLightVolumes.Editor {
 
                 float occludedPct = 100f * totalOccludedSamples / totalRays;
                 Debug.Log($"[ALV] Baked '{light.name}' — {voxelCount} voxels × {sampleCount} samples ({totalRays} rays), {occludedPct:F1}% occluded.", light);
+                return true;
             } finally {
                 if (commands.IsCreated) commands.Dispose();
                 if (hits.IsCreated) hits.Dispose();
@@ -108,8 +139,7 @@ namespace AdaptiveLightVolumes.Editor {
         private static Vector3[] GenerateSampleOffsets(int count, float radius, int seed) {
             var result = new Vector3[count];
             if (count == 1 || radius <= 0f) {
-                result[0] = Vector3.zero;
-                for (int i = 1; i < count; i++) result[i] = Vector3.zero;
+                for (int i = 0; i < count; i++) result[i] = Vector3.zero;
                 return result;
             }
             var rand = new System.Random(seed);

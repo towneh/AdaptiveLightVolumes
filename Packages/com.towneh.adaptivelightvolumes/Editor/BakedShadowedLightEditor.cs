@@ -123,9 +123,7 @@ namespace AdaptiveLightVolumes.Editor {
         private void DrawBakeActions() {
             using (new EditorGUILayout.HorizontalScope()) {
                 if (GUILayout.Button("Bake Occlusion Volume", GUILayout.Height(28f))) {
-                    foreach (var t in targets) {
-                        if (t is BakedShadowedLight l) OcclusionVolumeBaker.Bake(l);
-                    }
+                    BakeSelected();
                 }
                 using (new EditorGUI.DisabledScope(!AnyTargetHasBakedTexture())) {
                     if (GUILayout.Button("Clear", GUILayout.Width(80f), GUILayout.Height(28f))) {
@@ -138,6 +136,28 @@ namespace AdaptiveLightVolumes.Editor {
                         }
                     }
                 }
+            }
+        }
+
+        private void BakeSelected() {
+            try {
+                int total = targets.Length;
+                int idx = 0;
+                foreach (var t in targets) {
+                    if (!(t is BakedShadowedLight l)) { idx++; continue; }
+                    int captured = idx;
+                    bool completed = OcclusionVolumeBaker.Bake(l, (sub, status) => {
+                        float overall = total > 0 ? (captured + sub) / total : sub;
+                        return EditorUtility.DisplayCancelableProgressBar(
+                            "Baking Adaptive Light Volumes",
+                            total > 1 ? $"Light {captured + 1}/{total}: {status}" : status,
+                            overall);
+                    });
+                    if (!completed) break;
+                    idx++;
+                }
+            } finally {
+                EditorUtility.ClearProgressBar();
             }
         }
 
