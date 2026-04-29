@@ -243,12 +243,14 @@ float _ALV_LtcLambertEvaluate(float3 N, float3 P, float3 p0, float3 p1, float3 p
 }
 
 float3 _ALV_EvaluateAreaLight(int i, float3 positionWS, float3 normalWS) {
-    // Single-sided rectangle: receivers behind the +Z half-space see no light.
-    float3 lp        = _ALV_LightPositions[i].xyz;
-    float3 lightFwd  = _ALV_LightDirections[i].xyz;
-    if (dot(lightFwd, positionWS - lp) <= 0.0) return 0.0;
+    float3 lp = _ALV_LightPositions[i].xyz;
 
-    // Range cull from the rectangle's center.
+    // Range cull from the rectangle's center. We do NOT early-out on
+    // dot(lightForward, P - lp): the polygon winding + max(0, sum) inside
+    // _ALV_LtcLambertEvaluate already enforces single-sidedness, and a
+    // hard half-space cull produces a visible cutoff line on receivers
+    // straddling the rect's plane (especially noticeable when the light
+    // is tilted across a receiver mesh).
     float dist  = length(positionWS - lp);
     float range = _ALV_LightRanges[i].x;
     if (dist > range) return 0.0;
