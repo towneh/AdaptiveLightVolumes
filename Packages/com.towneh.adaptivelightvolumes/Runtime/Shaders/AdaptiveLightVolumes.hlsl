@@ -171,7 +171,7 @@ float _ALV_LtcIntegrateEdge(float3 v1, float3 v2) {
 }
 
 void _ALV_LtcClipQuadHorizon(inout float3 L0, inout float3 L1, inout float3 L2, inout float3 L3, inout float3 L4, out int n) {
-    int config = 0;
+    uint config = 0;
     if (L0.z > 0.0) config += 1;
     if (L1.z > 0.0) config += 2;
     if (L2.z > 0.0) config += 4;
@@ -179,23 +179,92 @@ void _ALV_LtcClipQuadHorizon(inout float3 L0, inout float3 L1, inout float3 L2, 
 
     n = 0;
 
-    if (config == 0)        { return; }
-    else if (config == 1)   { n = 3; L1 = -L1.z * L0 + L0.z * L1; L2 = -L3.z * L0 + L0.z * L3; }
-    else if (config == 2)   { n = 3; L0 = -L0.z * L1 + L1.z * L0; L2 = -L2.z * L1 + L1.z * L2; }
-    else if (config == 3)   { n = 4; L2 = -L2.z * L1 + L1.z * L2; L3 = -L3.z * L0 + L0.z * L3; }
-    else if (config == 4)   { n = 3; L0 = -L3.z * L2 + L2.z * L3; L1 = -L1.z * L2 + L2.z * L1; }
-    else if (config == 5)   { n = 0; }
-    else if (config == 6)   { n = 4; L0 = -L0.z * L1 + L1.z * L0; L3 = -L3.z * L2 + L2.z * L3; }
-    else if (config == 7)   { n = 5; L4 = -L3.z * L0 + L0.z * L3; L3 = -L3.z * L2 + L2.z * L3; }
-    else if (config == 8)   { n = 3; L0 = -L0.z * L3 + L3.z * L0; L1 = -L2.z * L3 + L3.z * L2; L2 = L3; }
-    else if (config == 9)   { n = 4; L1 = -L1.z * L0 + L0.z * L1; L2 = -L2.z * L3 + L3.z * L2; }
-    else if (config == 10)  { n = 0; }
-    else if (config == 11)  { n = 5; L4 = L3; L3 = -L2.z * L3 + L3.z * L2; L2 = -L2.z * L1 + L1.z * L2; }
-    else if (config == 12)  { n = 4; L1 = -L1.z * L2 + L2.z * L1; L0 = -L0.z * L3 + L3.z * L0; }
-    else if (config == 13)  { n = 5; L4 = L3; L3 = L2; L2 = -L1.z * L2 + L2.z * L1; L1 = -L1.z * L0 + L0.z * L1; }
-    else if (config == 14)  { n = 5; L4 = -L0.z * L3 + L3.z * L0; L0 = -L0.z * L1 + L1.z * L0; }
-    else if (config == 15)  { n = 4; }
+    // [forcecase] with case 13 first matches LTCGI's empirical case ordering;
+    // their experience is that other orderings let the compiler fold away the
+    // assignments and break the integration, with a 10-20% perf gain to boot.
+    [forcecase]
+    switch (config) {
+        case 13: // V1 V3 V4 above, V2 below
+            n = 5;
+            L4 = L3;
+            L3 = L2;
+            L2 = -L1.z * L2 + L2.z * L1;
+            L1 = -L1.z * L0 + L0.z * L1;
+            break;
+        case 15: // all above - common path, no clip
+            n = 4;
+            break;
+        case 9:  // V1 V4 above, V2 V3 below
+            n = 4;
+            L1 = -L1.z * L0 + L0.z * L1;
+            L2 = -L2.z * L3 + L3.z * L2;
+            break;
+        case 0:  // all below
+            break;
+        case 1:  // only V1 above
+            n = 3;
+            L1 = -L1.z * L0 + L0.z * L1;
+            L2 = -L3.z * L0 + L0.z * L3;
+            L3 = L0;
+            break;
+        case 2:  // only V2 above
+            n = 3;
+            L0 = -L0.z * L1 + L1.z * L0;
+            L2 = -L2.z * L1 + L1.z * L2;
+            L3 = L0;
+            break;
+        case 3:  // V1 V2 above, V3 V4 below
+            n = 4;
+            L2 = -L2.z * L1 + L1.z * L2;
+            L3 = -L3.z * L0 + L0.z * L3;
+            break;
+        case 4:  // only V3 above
+            n = 3;
+            L0 = -L3.z * L2 + L2.z * L3;
+            L1 = -L1.z * L2 + L2.z * L1;
+            L3 = L0;
+            break;
+        case 5:  // V1 V3 above, V2 V4 below - impossible for a convex quad
+            break;
+        case 6:  // V2 V3 above, V1 V4 below
+            n = 4;
+            L0 = -L0.z * L1 + L1.z * L0;
+            L3 = -L3.z * L2 + L2.z * L3;
+            break;
+        case 7:  // V1 V2 V3 above, V4 below
+            n = 5;
+            L4 = -L3.z * L0 + L0.z * L3;
+            L3 = -L3.z * L2 + L2.z * L3;
+            break;
+        case 8:  // only V4 above
+            n = 3;
+            L0 = -L0.z * L3 + L3.z * L0;
+            L1 = -L2.z * L3 + L3.z * L2;
+            L2 = L3;
+            break;
+        case 10: // V2 V4 above, V1 V3 below - impossible for a convex quad
+            break;
+        case 11: // V1 V2 V4 above, V3 below
+            n = 5;
+            L4 = L3;
+            L3 = -L2.z * L3 + L3.z * L2;
+            L2 = -L2.z * L1 + L1.z * L2;
+            break;
+        case 12: // V3 V4 above, V1 V2 below
+            n = 4;
+            L1 = -L1.z * L2 + L2.z * L1;
+            L0 = -L0.z * L3 + L3.z * L0;
+            break;
+        case 14: // V2 V3 V4 above, V1 below
+            n = 5;
+            L4 = -L0.z * L3 + L3.z * L0;
+            L0 = -L0.z * L1 + L1.z * L0;
+            break;
+    }
 
+    // Inlining these unconditionally breaks the [forcecase] above, per LTCGI's
+    // notes - keep the if-checks even though for n=3 cases L3 was already set
+    // inside the case body.
     if (n == 3) L3 = L0;
     if (n == 4) L4 = L0;
 }
@@ -233,13 +302,18 @@ float _ALV_LtcLambertEvaluate(float3 N, float3 P, float3 p0, float3 p1, float3 p
     // 1/(2*pi) normalization factor (verifiable: it returns 0.25 at theta=pi/2,
     // which is (pi/2)/(2*pi)), so the sum below is the final integral - do not
     // divide by 2*pi again.
+    //
+    // abs(sum) instead of max(0, sum): polygon winding does not affect magnitude,
+    // only sign. Single-sidedness is enforced by the caller via an explicit
+    // half-space test against the polygon's screen-space normal, mirroring the
+    // approach used in LTCGI.
     float sum = _ALV_LtcIntegrateEdge(L0, L1)
               + _ALV_LtcIntegrateEdge(L1, L2)
               + _ALV_LtcIntegrateEdge(L2, L3);
     if (n >= 4) sum += _ALV_LtcIntegrateEdge(L3, L4);
     if (n == 5) sum += _ALV_LtcIntegrateEdge(L4, L0);
 
-    return max(0.0, sum);
+    return abs(sum);
 }
 
 float3 _ALV_EvaluateAreaLight(int i, float3 positionWS, float3 normalWS) {
@@ -257,15 +331,23 @@ float3 _ALV_EvaluateAreaLight(int i, float3 positionWS, float3 normalWS) {
 
     // Build the four rect corners in world space. Rectangle lies in the light's
     // local XY plane at z=0, facing +Z (transform.forward). Order is CW around
-    // local +Z so the polygon's cross-product normal points to local -Z. The LTC
-    // convention is that the polygon emits opposite its cross-normal, so this
-    // makes emission align with light forward (+Z).
+    // local +Z so the polygon's cross-product normal in world points opposite
+    // to lightForward; combined with abs(sum) inside the integration this lets
+    // us use a single explicit half-space test for one-sided lights below.
     float halfW = _ALV_LightAreaParams[i].x;
     float halfH = _ALV_LightAreaParams[i].y;
     float3 p0 = mul(_ALV_LightToWorld[i], float4(-halfW, -halfH, 0.0, 1.0)).xyz;
     float3 p1 = mul(_ALV_LightToWorld[i], float4(-halfW,  halfH, 0.0, 1.0)).xyz;
     float3 p2 = mul(_ALV_LightToWorld[i], float4( halfW,  halfH, 0.0, 1.0)).xyz;
     float3 p3 = mul(_ALV_LightToWorld[i], float4( halfW, -halfH, 0.0, 1.0)).xyz;
+
+    // One-sided cull: skip receivers behind the rectangle's emission plane.
+    // _ALV_LightTypes[i].y == 1 means TwoSided is on, so we let both faces emit.
+    float twoSided = _ALV_LightTypes[i].y;
+    if (twoSided < 0.5) {
+        float3 screenNorm = cross(p1 - p0, p2 - p0);
+        if (dot(screenNorm, p0 - positionWS) < 0.0) return 0.0;
+    }
 
     float diffuse = _ALV_LtcLambertEvaluate(normalize(normalWS), positionWS, p0, p1, p2, p3);
     if (diffuse <= 0.0) return 0.0;

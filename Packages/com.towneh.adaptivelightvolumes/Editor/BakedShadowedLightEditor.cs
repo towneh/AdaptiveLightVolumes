@@ -18,6 +18,7 @@ namespace AdaptiveLightVolumes.Editor {
         private SerializedProperty _cookie;
 
         private SerializedProperty _areaSize;
+        private SerializedProperty _twoSided;
 
         private SerializedProperty _bakeExtents;
         private SerializedProperty _bakeResolution;
@@ -39,6 +40,7 @@ namespace AdaptiveLightVolumes.Editor {
             _cookie          = serializedObject.FindProperty(nameof(BakedShadowedLight.Cookie));
 
             _areaSize        = serializedObject.FindProperty(nameof(BakedShadowedLight.AreaSize));
+            _twoSided        = serializedObject.FindProperty(nameof(BakedShadowedLight.TwoSided));
 
             _bakeExtents     = serializedObject.FindProperty(nameof(BakedShadowedLight.BakeExtents));
             _bakeResolution  = serializedObject.FindProperty(nameof(BakedShadowedLight.BakeResolution));
@@ -72,6 +74,7 @@ namespace AdaptiveLightVolumes.Editor {
             if (mixedType || displayedType == LightType.Area) {
                 DrawSectionHeader("Area");
                 EditorGUILayout.PropertyField(_areaSize);
+                EditorGUILayout.PropertyField(_twoSided);
             }
 
             DrawSectionHeader("Occlusion Bake");

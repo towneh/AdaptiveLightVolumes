@@ -82,7 +82,7 @@ namespace AdaptiveLightVolumes {
                 Vector3 p = l.transform.position;
                 Vector3 fwd = l.transform.forward;
 
-                s_Types[count]      = new Vector4((float)l.Type, 0f, 0f, 0f);
+                s_Types[count]      = new Vector4((float)l.Type, l.TwoSided ? 1f : 0f, 0f, 0f);
                 s_Positions[count]  = new Vector4(p.x, p.y, p.z, 0f);
                 s_Directions[count] = new Vector4(fwd.x, fwd.y, fwd.z, 0f);
 

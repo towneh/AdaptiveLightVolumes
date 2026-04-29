@@ -33,6 +33,9 @@ namespace AdaptiveLightVolumes {
         [Tooltip("Width and height of the rectangular area light, in meters.")]
         public Vector2 AreaSize = new Vector2(2f, 2f);
 
+        [Tooltip("If true, the rectangle emits from both faces (useful for hanging emissive panels). If false, only the +Z (transform.forward) face emits and receivers behind the rect's plane are skipped.")]
+        public bool TwoSided = false;
+
         [Header("Occlusion Bake")]
         [Tooltip("World-space size of the occlusion volume baked around this light.")]
         public Vector3 BakeExtents = new Vector3(10f, 10f, 10f);
