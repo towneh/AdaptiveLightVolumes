@@ -24,6 +24,7 @@ namespace AdaptiveLightVolumes {
         private static readonly int s_BoundsMinID     = Shader.PropertyToID("_ALV_OcclusionBoundsMin");
         private static readonly int s_BoundsMaxID     = Shader.PropertyToID("_ALV_OcclusionBoundsMax");
         private static readonly int s_WorldToLightID  = Shader.PropertyToID("_ALV_WorldToLight");
+        private static readonly int s_LightToWorldID  = Shader.PropertyToID("_ALV_LightToWorld");
 
         private static readonly int[] s_OcclusionTexIDs = BuildTexIDs("_ALV_OcclusionTex");
         private static readonly int[] s_CookieTexIDs    = BuildTexIDs("_ALV_CookieTex");
@@ -38,6 +39,7 @@ namespace AdaptiveLightVolumes {
         private static readonly Vector4[] s_BoundsMin   = new Vector4[MaxLights];
         private static readonly Vector4[] s_BoundsMax   = new Vector4[MaxLights];
         private static readonly Matrix4x4[] s_WorldToLight = new Matrix4x4[MaxLights];
+        private static readonly Matrix4x4[] s_LightToWorld = new Matrix4x4[MaxLights];
 
         private static int[] BuildTexIDs(string prefix) {
             var ids = new int[MaxLights];
@@ -100,6 +102,7 @@ namespace AdaptiveLightVolumes {
                 s_BoundsMax[count] = b.max;
 
                 s_WorldToLight[count] = l.transform.worldToLocalMatrix;
+                s_LightToWorld[count] = l.transform.localToWorldMatrix;
 
                 Shader.SetGlobalTexture(s_OcclusionTexIDs[count], l.BakedOcclusion != null ? (Texture)l.BakedOcclusion : Texture2D.whiteTexture);
                 Shader.SetGlobalTexture(s_CookieTexIDs[count], l.Cookie != null ? (Texture)l.Cookie : Texture2D.whiteTexture);
@@ -118,6 +121,7 @@ namespace AdaptiveLightVolumes {
             Shader.SetGlobalVectorArray(s_BoundsMinID, s_BoundsMin);
             Shader.SetGlobalVectorArray(s_BoundsMaxID, s_BoundsMax);
             Shader.SetGlobalMatrixArray(s_WorldToLightID, s_WorldToLight);
+            Shader.SetGlobalMatrixArray(s_LightToWorldID, s_LightToWorld);
         }
     }
 }

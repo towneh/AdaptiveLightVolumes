@@ -72,9 +72,6 @@ namespace AdaptiveLightVolumes.Editor {
             if (mixedType || displayedType == LightType.Area) {
                 DrawSectionHeader("Area");
                 EditorGUILayout.PropertyField(_areaSize);
-                EditorGUILayout.HelpBox(
-                    "Area light evaluation is not yet implemented in the shader. Data is pushed to globals and gizmos draw correctly, but receivers will not be lit until the Area evaluator ships.",
-                    MessageType.Info);
             }
 
             DrawSectionHeader("Occlusion Bake");

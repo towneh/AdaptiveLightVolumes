@@ -26,6 +26,7 @@ float4   _ALV_LightAreaParams[ALV_MAX_LIGHTS];   // x = halfWidth, y = halfHeigh
 float4   _ALV_OcclusionBoundsMin[ALV_MAX_LIGHTS];
 float4   _ALV_OcclusionBoundsMax[ALV_MAX_LIGHTS];
 float4x4 _ALV_WorldToLight[ALV_MAX_LIGHTS];
+float4x4 _ALV_LightToWorld[ALV_MAX_LIGHTS];
 
 // All ALV textures share sampler_LinearClamp (declared by URP's Common.hlsl,
 // reachable from Core.hlsl). ps_4_0 caps at 16 samplers; with 8 occlusion +
@@ -146,6 +147,122 @@ float3 _ALV_EvaluateSpotLight(int i, float3 positionWS, float3 normalWS) {
     return _ALV_LightColors[i].rgb * cookie * (NoL * falloff * cone * occlusion);
 }
 
+// Heitz et al. 2016, "Real-Time Polygonal-Light Shading with Linearly Transformed
+// Cosines". For Lambert receivers the LTC matrix is the identity, so the diffuse
+// area-light response reduces to integrating the clamped cosine over the polygon
+// projected onto the upper hemisphere. The two helpers below implement that:
+// _ALV_LtcIntegrateEdge is the per-edge contribution (Eq. 11), and
+// _ALV_LtcClipQuadHorizon is the 16-case clip of the quad against the receiver's
+// horizon plane.
+
+float _ALV_LtcIntegrateEdge(float3 v1, float3 v2) {
+    float x = dot(v1, v2);
+    float y = abs(x);
+    float a = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
+    float b = 3.4175940 + (4.1616724 + y) * y;
+    float v = a / b;
+    float thetaSinTheta = (x > 0.0) ? v : 0.5 * rsqrt(max(1.0 - x * x, 1e-7)) - v;
+    return cross(v1, v2).z * thetaSinTheta;
+}
+
+void _ALV_LtcClipQuadHorizon(inout float3 L0, inout float3 L1, inout float3 L2, inout float3 L3, inout float3 L4, out int n) {
+    int config = 0;
+    if (L0.z > 0.0) config += 1;
+    if (L1.z > 0.0) config += 2;
+    if (L2.z > 0.0) config += 4;
+    if (L3.z > 0.0) config += 8;
+
+    n = 0;
+
+    if (config == 0)        { return; }
+    else if (config == 1)   { n = 3; L1 = -L1.z * L0 + L0.z * L1; L2 = -L3.z * L0 + L0.z * L3; }
+    else if (config == 2)   { n = 3; L0 = -L0.z * L1 + L1.z * L0; L2 = -L2.z * L1 + L1.z * L2; }
+    else if (config == 3)   { n = 4; L2 = -L2.z * L1 + L1.z * L2; L3 = -L3.z * L0 + L0.z * L3; }
+    else if (config == 4)   { n = 3; L0 = -L3.z * L2 + L2.z * L3; L1 = -L1.z * L2 + L2.z * L1; }
+    else if (config == 5)   { n = 0; }
+    else if (config == 6)   { n = 4; L0 = -L0.z * L1 + L1.z * L0; L3 = -L3.z * L2 + L2.z * L3; }
+    else if (config == 7)   { n = 5; L4 = -L3.z * L0 + L0.z * L3; L3 = -L3.z * L2 + L2.z * L3; }
+    else if (config == 8)   { n = 3; L0 = -L0.z * L3 + L3.z * L0; L1 = -L2.z * L3 + L3.z * L2; L2 = L3; }
+    else if (config == 9)   { n = 4; L1 = -L1.z * L0 + L0.z * L1; L2 = -L2.z * L3 + L3.z * L2; }
+    else if (config == 10)  { n = 0; }
+    else if (config == 11)  { n = 5; L4 = L3; L3 = -L2.z * L3 + L3.z * L2; L2 = -L2.z * L1 + L1.z * L2; }
+    else if (config == 12)  { n = 4; L1 = -L1.z * L2 + L2.z * L1; L0 = -L0.z * L3 + L3.z * L0; }
+    else if (config == 13)  { n = 5; L4 = L3; L3 = L2; L2 = -L1.z * L2 + L2.z * L1; L1 = -L1.z * L0 + L0.z * L1; }
+    else if (config == 14)  { n = 5; L4 = -L0.z * L3 + L3.z * L0; L0 = -L0.z * L1 + L1.z * L0; }
+    else if (config == 15)  { n = 4; }
+
+    if (n == 3) L3 = L0;
+    if (n == 4) L4 = L0;
+}
+
+// Lambert-only LTC: integrates a quad's cosine-weighted projection on the
+// receiver's hemisphere. No LUT required (the LTC matrix is identity for the
+// pure clamped-cosine BRDF). Returns a value in [0, 1] representing the
+// fraction of the diffuse hemisphere covered by the polygon.
+float _ALV_LtcLambertEvaluate(float3 N, float3 P, float3 p0, float3 p1, float3 p2, float3 p3) {
+    float3 T1, T2;
+    if (abs(N.z) < 0.999) T1 = normalize(cross(N, float3(0.0, 0.0, 1.0)));
+    else                  T1 = normalize(cross(N, float3(1.0, 0.0, 0.0)));
+    T2 = cross(N, T1);
+    float3x3 toLocal = transpose(float3x3(T1, T2, N));
+
+    float3 L0 = mul(toLocal, p0 - P);
+    float3 L1 = mul(toLocal, p1 - P);
+    float3 L2 = mul(toLocal, p2 - P);
+    float3 L3 = mul(toLocal, p3 - P);
+    float3 L4 = float3(0.0, 0.0, 0.0);
+
+    int n;
+    _ALV_LtcClipQuadHorizon(L0, L1, L2, L3, L4, n);
+    if (n == 0) return 0.0;
+
+    L0 = normalize(L0);
+    L1 = normalize(L1);
+    L2 = normalize(L2);
+    L3 = normalize(L3);
+    if (n >= 5) L4 = normalize(L4);
+
+    float sum = _ALV_LtcIntegrateEdge(L0, L1)
+              + _ALV_LtcIntegrateEdge(L1, L2)
+              + _ALV_LtcIntegrateEdge(L2, L3);
+    if (n >= 4) sum += _ALV_LtcIntegrateEdge(L3, L4);
+    if (n == 5) sum += _ALV_LtcIntegrateEdge(L4, L0);
+
+    return max(0.0, sum * (1.0 / (2.0 * 3.141592653589793)));
+}
+
+float3 _ALV_EvaluateAreaLight(int i, float3 positionWS, float3 normalWS) {
+    // Single-sided rectangle: receivers behind the +Z half-space see no light.
+    float3 lp        = _ALV_LightPositions[i].xyz;
+    float3 lightFwd  = _ALV_LightDirections[i].xyz;
+    if (dot(lightFwd, positionWS - lp) <= 0.0) return 0.0;
+
+    // Range cull from the rectangle's center.
+    float dist  = length(positionWS - lp);
+    float range = _ALV_LightRanges[i].x;
+    if (dist > range) return 0.0;
+
+    // Build the four rect corners in world space. Rectangle lies in the light's
+    // local XY plane at z=0, facing +Z (transform.forward).
+    float halfW = _ALV_LightAreaParams[i].x;
+    float halfH = _ALV_LightAreaParams[i].y;
+    float3 p0 = mul(_ALV_LightToWorld[i], float4(-halfW, -halfH, 0.0, 1.0)).xyz;
+    float3 p1 = mul(_ALV_LightToWorld[i], float4( halfW, -halfH, 0.0, 1.0)).xyz;
+    float3 p2 = mul(_ALV_LightToWorld[i], float4( halfW,  halfH, 0.0, 1.0)).xyz;
+    float3 p3 = mul(_ALV_LightToWorld[i], float4(-halfW,  halfH, 0.0, 1.0)).xyz;
+
+    float diffuse = _ALV_LtcLambertEvaluate(normalize(normalWS), positionWS, p0, p1, p2, p3);
+    if (diffuse <= 0.0) return 0.0;
+
+    float distNorm   = saturate(dist * _ALV_LightRanges[i].y);
+    float falloffExp = _ALV_LightColors[i].a;
+    float falloff    = pow(1.0 - distNorm, falloffExp);
+
+    float occlusion  = _ALV_SampleOcclusion(i, positionWS);
+
+    return _ALV_LightColors[i].rgb * (diffuse * falloff * occlusion);
+}
+
 void EvaluateAdaptiveLights_float(float3 PositionWS, float3 NormalWS, out float3 LightContribution) {
     float3 total = 0.0;
     int count = (int)_ALV_LightCount;
@@ -155,8 +272,9 @@ void EvaluateAdaptiveLights_float(float3 PositionWS, float3 NormalWS, out float3
             total += _ALV_EvaluatePointLight(i, PositionWS, NormalWS);
         } else if (type < 1.5) {
             total += _ALV_EvaluateSpotLight(i, PositionWS, NormalWS);
+        } else {
+            total += _ALV_EvaluateAreaLight(i, PositionWS, NormalWS);
         }
-        // TODO: type < 2.5 -> Area evaluator (rectangular Lambert / LTC integration)
     }
     LightContribution = total;
 }
