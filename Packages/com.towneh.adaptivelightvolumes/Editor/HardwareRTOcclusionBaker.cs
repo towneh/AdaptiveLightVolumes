@@ -45,7 +45,7 @@ namespace AdaptiveLightVolumes.Editor {
             RenderTexture rt = null;
 
             try {
-                rtas = new RayTracingAccelerationStructure(new RayTracingAccelerationStructure.RASSettings(
+                rtas = new RayTracingAccelerationStructure(new RayTracingAccelerationStructure.Settings(
                     RayTracingAccelerationStructure.ManagementMode.Automatic,
                     RayTracingAccelerationStructure.RayTracingModeMask.Everything,
                     light.OccluderLayers));
