@@ -39,6 +39,9 @@ namespace AdaptiveLightVolumes {
         [Tooltip("Voxel resolution of the baked occlusion Texture3D.")]
         public Vector3Int BakeResolution = new Vector3Int(32, 32, 32);
 
+        [Tooltip("Layers considered as occluders during the bake. Typically the static-environment layer; defaults to all.")]
+        public LayerMask OccluderLayers = -1;
+
         [Tooltip("Texture3D produced by OcclusionVolumeBaker. Assigned at bake time; sampled at runtime by the shader.")]
         public Texture3D BakedOcclusion;
 
