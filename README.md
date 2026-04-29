@@ -1,6 +1,6 @@
 # Adaptive Light Volumes
 
-Movable point, spot, and area lights with pre-baked 3D occlusion volumes for Unity 6.4+.
+Movable point, spot, and area lights with pre-baked 3D occlusion volumes for Unity 6+.
 
 ALV is the dynamic-light counterpart to Unity's Adaptive Probe Volumes. APVs handle the static, indirect side of a scene's lighting; ALV handles the small-radius dynamic lights that need to move, blink, or follow gameplay state — without the per-frame cost of a real-time shadow map per light.
 
@@ -14,7 +14,7 @@ A baker traces rays from a 3D voxel grid around each light against your static s
 
 ## Requirements
 
-- Unity 6000.4 (Unity 6.4) or newer
+- Unity 6000.0 (Unity 6) or newer
 - URP (the bundled demo shader and the HLSL include reference URP's `Core.hlsl`)
 - *Optional:* Direct3D 12 graphics API + a DXR / VK_KHR_ray_tracing-capable GPU for the hardware ray-tracing bake path. Without these the baker transparently falls back to CPU `RaycastCommand`.
 

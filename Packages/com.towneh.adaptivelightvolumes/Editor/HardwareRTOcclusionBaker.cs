@@ -45,10 +45,19 @@ namespace AdaptiveLightVolumes.Editor {
             RenderTexture rt = null;
 
             try {
+                // The nested settings type was renamed RASSettings -> Settings in
+                // Unity 6.4. Construct the right one for the current editor.
+#if UNITY_6000_4_OR_NEWER
                 rtas = new RayTracingAccelerationStructure(new RayTracingAccelerationStructure.Settings(
                     RayTracingAccelerationStructure.ManagementMode.Automatic,
                     RayTracingAccelerationStructure.RayTracingModeMask.Everything,
                     light.OccluderLayers));
+#else
+                rtas = new RayTracingAccelerationStructure(new RayTracingAccelerationStructure.RASSettings(
+                    RayTracingAccelerationStructure.ManagementMode.Automatic,
+                    RayTracingAccelerationStructure.RayTracingModeMask.Everything,
+                    light.OccluderLayers));
+#endif
                 rtas.Build();
 
                 offsetsBuffer = new ComputeBuffer(sampleCount, 16);

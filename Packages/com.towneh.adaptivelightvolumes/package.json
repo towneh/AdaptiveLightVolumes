@@ -2,8 +2,8 @@
   "name": "com.towneh.adaptivelightvolumes",
   "version": "0.1.0",
   "displayName": "Adaptive Light Volumes",
-  "description": "Movable point, spot, and area lights with pre-baked 3D occlusion volumes for Unity 6.4+. Designed as the dynamic-light counterpart to Unity's Adaptive Probe Volumes: bake static-scene visibility once per light into a Texture3D, then sample the volume per-fragment at runtime for free shadowing on many cheap lights without per-frame shadow maps.",
-  "unity": "6000.4",
+  "description": "Movable point, spot, and area lights with pre-baked 3D occlusion volumes for Unity 6+. Designed as the dynamic-light counterpart to Unity's Adaptive Probe Volumes: bake static-scene visibility once per light into a Texture3D, then sample the volume per-fragment at runtime for free shadowing on many cheap lights without per-frame shadow maps.",
+  "unity": "6000.0",
   "license": "MIT",
   "author": {
     "name": "towneh"
