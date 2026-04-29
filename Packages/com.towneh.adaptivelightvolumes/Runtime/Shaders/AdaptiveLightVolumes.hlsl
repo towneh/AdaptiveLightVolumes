@@ -249,13 +249,16 @@ float3 _ALV_EvaluateAreaLight(int i, float3 positionWS, float3 normalWS) {
     if (dist > range) return 0.0;
 
     // Build the four rect corners in world space. Rectangle lies in the light's
-    // local XY plane at z=0, facing +Z (transform.forward).
+    // local XY plane at z=0, facing +Z (transform.forward). Order is CW around
+    // local +Z so the polygon's cross-product normal points to local -Z. The LTC
+    // convention is that the polygon emits opposite its cross-normal, so this
+    // makes emission align with light forward (+Z).
     float halfW = _ALV_LightAreaParams[i].x;
     float halfH = _ALV_LightAreaParams[i].y;
     float3 p0 = mul(_ALV_LightToWorld[i], float4(-halfW, -halfH, 0.0, 1.0)).xyz;
-    float3 p1 = mul(_ALV_LightToWorld[i], float4( halfW, -halfH, 0.0, 1.0)).xyz;
+    float3 p1 = mul(_ALV_LightToWorld[i], float4(-halfW,  halfH, 0.0, 1.0)).xyz;
     float3 p2 = mul(_ALV_LightToWorld[i], float4( halfW,  halfH, 0.0, 1.0)).xyz;
-    float3 p3 = mul(_ALV_LightToWorld[i], float4(-halfW,  halfH, 0.0, 1.0)).xyz;
+    float3 p3 = mul(_ALV_LightToWorld[i], float4( halfW, -halfH, 0.0, 1.0)).xyz;
 
     float diffuse = _ALV_LtcLambertEvaluate(normalize(normalWS), positionWS, p0, p1, p2, p3);
     if (diffuse <= 0.0) return 0.0;
