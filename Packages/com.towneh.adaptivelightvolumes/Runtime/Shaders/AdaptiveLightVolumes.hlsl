@@ -156,7 +156,12 @@ float3 _ALV_EvaluateSpotLight(int i, float3 positionWS, float3 normalWS) {
 // horizon plane.
 
 float _ALV_LtcIntegrateEdge(float3 v1, float3 v2) {
-    float x = dot(v1, v2);
+    // Clamp cos(theta) away from -1 so the rsqrt(1 - x*x) branch does not blow
+    // up when consecutive polygon vertices are nearly anti-parallel (which
+    // happens when the receiver is close to the rectangle's plane near a
+    // corner). Without this, theta/sinTheta can spike to ~1500 and produce
+    // pinpoint HDR flares at rectangle vertices.
+    float x = clamp(dot(v1, v2), -0.9999, 0.9999);
     float y = abs(x);
     float a = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
     float b = 3.4175940 + (4.1616724 + y) * y;
