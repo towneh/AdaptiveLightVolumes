@@ -204,7 +204,9 @@ float _ALV_LtcLambertEvaluate(float3 N, float3 P, float3 p0, float3 p1, float3 p
     if (abs(N.z) < 0.999) T1 = normalize(cross(N, float3(0.0, 0.0, 1.0)));
     else                  T1 = normalize(cross(N, float3(1.0, 0.0, 0.0)));
     T2 = cross(N, T1);
-    float3x3 toLocal = transpose(float3x3(T1, T2, N));
+    // HLSL's float3x3(v1, v2, v3) places the vectors as rows, so this matrix
+    // already maps world -> tangent (mul(toLocal, V) = (T1 . V, T2 . V, N . V)).
+    float3x3 toLocal = float3x3(T1, T2, N);
 
     float3 L0 = mul(toLocal, p0 - P);
     float3 L1 = mul(toLocal, p1 - P);
@@ -222,13 +224,17 @@ float _ALV_LtcLambertEvaluate(float3 N, float3 P, float3 p0, float3 p1, float3 p
     L3 = normalize(L3);
     if (n >= 5) L4 = normalize(L4);
 
+    // The rational approximation in _ALV_LtcIntegrateEdge already includes the
+    // 1/(2*pi) normalization factor (verifiable: it returns 0.25 at theta=pi/2,
+    // which is (pi/2)/(2*pi)), so the sum below is the final integral - do not
+    // divide by 2*pi again.
     float sum = _ALV_LtcIntegrateEdge(L0, L1)
               + _ALV_LtcIntegrateEdge(L1, L2)
               + _ALV_LtcIntegrateEdge(L2, L3);
     if (n >= 4) sum += _ALV_LtcIntegrateEdge(L3, L4);
     if (n == 5) sum += _ALV_LtcIntegrateEdge(L4, L0);
 
-    return max(0.0, sum * (1.0 / (2.0 * 3.141592653589793)));
+    return max(0.0, sum);
 }
 
 float3 _ALV_EvaluateAreaLight(int i, float3 positionWS, float3 normalWS) {
