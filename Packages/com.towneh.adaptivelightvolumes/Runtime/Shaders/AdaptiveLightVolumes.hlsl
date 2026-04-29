@@ -27,33 +27,38 @@ float4   _ALV_OcclusionBoundsMin[ALV_MAX_LIGHTS];
 float4   _ALV_OcclusionBoundsMax[ALV_MAX_LIGHTS];
 float4x4 _ALV_WorldToLight[ALV_MAX_LIGHTS];
 
-Texture3D    _ALV_OcclusionTex0; SamplerState sampler_ALV_OcclusionTex0;
-Texture3D    _ALV_OcclusionTex1; SamplerState sampler_ALV_OcclusionTex1;
-Texture3D    _ALV_OcclusionTex2; SamplerState sampler_ALV_OcclusionTex2;
-Texture3D    _ALV_OcclusionTex3; SamplerState sampler_ALV_OcclusionTex3;
-Texture3D    _ALV_OcclusionTex4; SamplerState sampler_ALV_OcclusionTex4;
-Texture3D    _ALV_OcclusionTex5; SamplerState sampler_ALV_OcclusionTex5;
-Texture3D    _ALV_OcclusionTex6; SamplerState sampler_ALV_OcclusionTex6;
-Texture3D    _ALV_OcclusionTex7; SamplerState sampler_ALV_OcclusionTex7;
+// All ALV textures share sampler_LinearClamp (declared by URP's Common.hlsl,
+// reachable from Core.hlsl). ps_4_0 caps at 16 samplers; with 8 occlusion +
+// 8 cookie textures plus consumer-shader samplers (e.g. _BaseMap), giving
+// each texture its own sampler exceeds the limit. The consumer shader is
+// expected to include URP Core.hlsl before this file.
+Texture3D    _ALV_OcclusionTex0;
+Texture3D    _ALV_OcclusionTex1;
+Texture3D    _ALV_OcclusionTex2;
+Texture3D    _ALV_OcclusionTex3;
+Texture3D    _ALV_OcclusionTex4;
+Texture3D    _ALV_OcclusionTex5;
+Texture3D    _ALV_OcclusionTex6;
+Texture3D    _ALV_OcclusionTex7;
 
-Texture2D    _ALV_CookieTex0; SamplerState sampler_ALV_CookieTex0;
-Texture2D    _ALV_CookieTex1; SamplerState sampler_ALV_CookieTex1;
-Texture2D    _ALV_CookieTex2; SamplerState sampler_ALV_CookieTex2;
-Texture2D    _ALV_CookieTex3; SamplerState sampler_ALV_CookieTex3;
-Texture2D    _ALV_CookieTex4; SamplerState sampler_ALV_CookieTex4;
-Texture2D    _ALV_CookieTex5; SamplerState sampler_ALV_CookieTex5;
-Texture2D    _ALV_CookieTex6; SamplerState sampler_ALV_CookieTex6;
-Texture2D    _ALV_CookieTex7; SamplerState sampler_ALV_CookieTex7;
+Texture2D    _ALV_CookieTex0;
+Texture2D    _ALV_CookieTex1;
+Texture2D    _ALV_CookieTex2;
+Texture2D    _ALV_CookieTex3;
+Texture2D    _ALV_CookieTex4;
+Texture2D    _ALV_CookieTex5;
+Texture2D    _ALV_CookieTex6;
+Texture2D    _ALV_CookieTex7;
 
 float3 _ALV_SampleCookie(int lightIdx, float2 uv) {
-    if (lightIdx == 0) return _ALV_CookieTex0.SampleLevel(sampler_ALV_CookieTex0, uv, 0).rgb;
-    if (lightIdx == 1) return _ALV_CookieTex1.SampleLevel(sampler_ALV_CookieTex1, uv, 0).rgb;
-    if (lightIdx == 2) return _ALV_CookieTex2.SampleLevel(sampler_ALV_CookieTex2, uv, 0).rgb;
-    if (lightIdx == 3) return _ALV_CookieTex3.SampleLevel(sampler_ALV_CookieTex3, uv, 0).rgb;
-    if (lightIdx == 4) return _ALV_CookieTex4.SampleLevel(sampler_ALV_CookieTex4, uv, 0).rgb;
-    if (lightIdx == 5) return _ALV_CookieTex5.SampleLevel(sampler_ALV_CookieTex5, uv, 0).rgb;
-    if (lightIdx == 6) return _ALV_CookieTex6.SampleLevel(sampler_ALV_CookieTex6, uv, 0).rgb;
-    return _ALV_CookieTex7.SampleLevel(sampler_ALV_CookieTex7, uv, 0).rgb;
+    if (lightIdx == 0) return _ALV_CookieTex0.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    if (lightIdx == 1) return _ALV_CookieTex1.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    if (lightIdx == 2) return _ALV_CookieTex2.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    if (lightIdx == 3) return _ALV_CookieTex3.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    if (lightIdx == 4) return _ALV_CookieTex4.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    if (lightIdx == 5) return _ALV_CookieTex5.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    if (lightIdx == 6) return _ALV_CookieTex6.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
+    return _ALV_CookieTex7.SampleLevel(sampler_LinearClamp, uv, 0).rgb;
 }
 
 float _ALV_SampleOcclusion(int lightIdx, float3 positionWS) {
@@ -67,14 +72,14 @@ float _ALV_SampleOcclusion(int lightIdx, float3 positionWS) {
     // Texture3D bindings are fixed-slot; the manager pushes per-light textures
     // to _ALV_OcclusionTex0..7. A loop with dynamic index won't sample dynamically
     // through Texture3D handles in HLSL, so we branch.
-    if (lightIdx == 0) return _ALV_OcclusionTex0.SampleLevel(sampler_ALV_OcclusionTex0, uvw, 0).r;
-    if (lightIdx == 1) return _ALV_OcclusionTex1.SampleLevel(sampler_ALV_OcclusionTex1, uvw, 0).r;
-    if (lightIdx == 2) return _ALV_OcclusionTex2.SampleLevel(sampler_ALV_OcclusionTex2, uvw, 0).r;
-    if (lightIdx == 3) return _ALV_OcclusionTex3.SampleLevel(sampler_ALV_OcclusionTex3, uvw, 0).r;
-    if (lightIdx == 4) return _ALV_OcclusionTex4.SampleLevel(sampler_ALV_OcclusionTex4, uvw, 0).r;
-    if (lightIdx == 5) return _ALV_OcclusionTex5.SampleLevel(sampler_ALV_OcclusionTex5, uvw, 0).r;
-    if (lightIdx == 6) return _ALV_OcclusionTex6.SampleLevel(sampler_ALV_OcclusionTex6, uvw, 0).r;
-    return _ALV_OcclusionTex7.SampleLevel(sampler_ALV_OcclusionTex7, uvw, 0).r;
+    if (lightIdx == 0) return _ALV_OcclusionTex0.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    if (lightIdx == 1) return _ALV_OcclusionTex1.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    if (lightIdx == 2) return _ALV_OcclusionTex2.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    if (lightIdx == 3) return _ALV_OcclusionTex3.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    if (lightIdx == 4) return _ALV_OcclusionTex4.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    if (lightIdx == 5) return _ALV_OcclusionTex5.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    if (lightIdx == 6) return _ALV_OcclusionTex6.SampleLevel(sampler_LinearClamp, uvw, 0).r;
+    return _ALV_OcclusionTex7.SampleLevel(sampler_LinearClamp, uvw, 0).r;
 }
 
 float3 _ALV_EvaluatePointLight(int i, float3 positionWS, float3 normalWS) {
