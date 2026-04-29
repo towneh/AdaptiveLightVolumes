@@ -1,0 +1,18 @@
+{
+  "name": "com.towneh.adaptivelightvolumes",
+  "version": "0.0.1",
+  "displayName": "Adaptive Light Volumes",
+  "description": "Per-light baked 3D occlusion volumes for many cheap movable point lights, complementing Unity's Adaptive Probe Volumes (APV). Bakes static-scene occlusion once per light into a Texture3D; runtime samples the volume for free per-fragment shadowing without per-frame shadow maps.",
+  "unity": "6000.4",
+  "author": {
+    "name": "towneh"
+  },
+  "keywords": [
+    "lighting",
+    "apv",
+    "probes",
+    "occlusion",
+    "shadows",
+    "point-light"
+  ]
+}
